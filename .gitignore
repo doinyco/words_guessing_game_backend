@@ -3,3 +3,7 @@ venv/
 venv
 .venv
 venv.bak/
+__pycache__/
+*.py[cod]
+*.pyo
+game.db
