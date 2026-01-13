@@ -8,7 +8,8 @@ class Player(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    word_submissions: Mapped[list["WordSubmission"]] = relationship(
+    word_submissions = relationship(
+        "WordSubmission",
         back_populates="player",
         cascade="all, delete-orphan"
     )

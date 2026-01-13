@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.routes import health
+from app.api.routes import health, matches
 from app.core.dictionary import load_dictionary
 
 from app.db import Base, engine
@@ -11,7 +11,7 @@ load_dictionary()
 
 
 app.include_router(health.router)
-# app.include_router(matches.router)
+app.include_router(matches.router)
 
 # Startup event: create all tables
 @app.on_event("startup")

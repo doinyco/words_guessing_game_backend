@@ -9,7 +9,8 @@ class Match(Base):
     letter: Mapped[str] = mapped_column(String(1), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active")
 
-    word_submissions: Mapped[list["WordSubmission"]] = relationship(
+    word_submissions = relationship(
+        "WordSubmission",
         back_populates="match",
         cascade="all, delete-orphan"
     )

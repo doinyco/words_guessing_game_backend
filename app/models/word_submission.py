@@ -19,5 +19,5 @@ class WordSubmission(Base):
 
     word: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    player: Mapped["Player"] = relationship(back_populates="word_submissions")
-    match: Mapped["Match"] = relationship(back_populates="word_submissions")
+    player = relationship("Player", back_populates="word_submissions")
+    match = relationship("Match", back_populates="word_submissions")
