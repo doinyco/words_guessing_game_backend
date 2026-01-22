@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.routes import health, matches
+from app.api.routes import matches, players
 from app.core.dictionary import load_dictionary
 
 from app.db import Base, engine
@@ -9,8 +9,7 @@ app = FastAPI(title="Lexora Backend")
 
 load_dictionary()
 
-
-app.include_router(health.router)
+app.include_router(players.router)
 app.include_router(matches.router)
 
 # Startup event: create all tables

@@ -8,3 +8,4 @@ __pycache__/
 *.pyo
 game.db
 .env
+.DS_Store
