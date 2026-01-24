@@ -2,12 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import random
 import string
+from sqlalchemy import func
 
 from app.db.session import get_db
 from app.models import Match, Player, WordSubmission
 from app.schemas import (
     MatchCreateResponse,
     MatchJoinResponse,
+    MatchDetailResponse,
+    MatchLeaderBoardResponse,
+    MatchEndResponse,
     PlayerCreate,
     WordSubmissionCreate,
     WordSubmissionResponse,
@@ -113,4 +117,62 @@ def submit_word(
     db.refresh(submission)
 
     return submission
+
+@router.get("/{match_id}", response_model=MatchDetailResponse)
+def get_match(match_id: int, db: Session = Depends(get_db)):
+    match = db.get(Match, match_id)
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    submissions = (
+        db.query(WordSubmission)
+        .filter(WordSubmission.match_id == match_id)
+        .all()
+    )
+
+    return {
+        "id": match.id,
+        "letter": match.letter,
+        "status": match.status,
+        "submissions": submissions,
+    }
+
+@router.get("/{match_id}/leaderboard", response_model=MatchLeaderBoardResponse)
+def get_leaderboard(match_id: int, db: Session = Depends(get_db)):
+    match = db.get(Match, match_id)
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    rows = (
+        db.query(
+            Player.id.label("player_id"),
+            Player.name.label("player_name"),
+            func.count(WordSubmission.id).label("score"),
+        )
+        .join(WordSubmission, WordSubmission.player_id == Player.id)
+        .filter(WordSubmission.match_id == match_id)
+        .group_by(Player.id, Player.name)
+        .order_by(func.count(WordSubmission.id).desc(), Player.name.asc())
+        .all()
+    )
+
+    leaderboard = [
+        {"player_id": r.player_id, "player_name": r.player_name, "score": r.score}
+        for r in rows
+    ]
+
+    return {"match_id": match_id, "leaderboard": leaderboard}
+
+# Endpoint to end a match
+@router.post("/{match_id}/end", response_model=MatchEndResponse)
+def end_match(match_id: int, db: Session = Depends(get_db)):
+    match = db.get(Match, match_id)
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    match.status = "ended"
+    db.commit()
+    db.refresh(match)
+
+    return match
    

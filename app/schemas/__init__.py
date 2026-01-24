@@ -1,5 +1,5 @@
 from .player import PlayerCreate, PlayerResponse
-from .match import MatchCreateResponse, MatchJoinResponse
+from .match import MatchCreateResponse, MatchJoinResponse, MatchDetailResponse, LeaderBoardEntry, MatchLeaderBoardResponse, MatchEndResponse
 from .word_submission import WordSubmissionCreate, WordSubmissionResponse
 
 __all__ = [
@@ -7,6 +7,10 @@ __all__ = [
     "PlayerResponse",
     "MatchCreateResponse",
     "MatchJoinResponse",
+    "MatchDetailResponse",
+    "LeaderBoardEntry",
+    "MatchLeaderBoardResponse",
+    "MatchEndResponse",
     "WordSubmissionCreate",
     "WordSubmissionResponse",
 ]
