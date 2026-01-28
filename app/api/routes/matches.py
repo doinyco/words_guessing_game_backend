@@ -3,15 +3,17 @@ from sqlalchemy.orm import Session
 import random
 import string
 from sqlalchemy import func
+from datetime import datetime, timedelta
 
 from app.db.session import get_db
-from app.models import Match, Player, WordSubmission
+from app.models import Match, Player, WordSubmission, MatchPlayer
 from app.schemas import (
     MatchCreateResponse,
     MatchJoinResponse,
     MatchDetailResponse,
     MatchLeaderBoardResponse,
     MatchEndResponse,
+    PlayerTimeResponse,
     PlayerCreate,
     WordSubmissionCreate,
     WordSubmissionResponse,
@@ -48,18 +50,31 @@ def join_match(
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
     
+    if match.status != "active":
+        raise HTTPException(status_code=400, detail="Match is not active")
+
+    # Count players who already joined this match
+    joined_count = db.query(MatchPlayer).filter(MatchPlayer.match_id == match_id).count()
+    if joined_count >= 2:
+        raise HTTPException(status_code=400, detail="Match already has 2 players")
+
     # Create a new player
     new_player = Player(name=player.name)
     db.add(new_player)
     db.commit()
     db.refresh(new_player)
 
+    # Link player to match
+    now = datetime.utcnow()
+    link = MatchPlayer(match_id=match_id, player_id=new_player.id, joined_at=now, expires_at=now + timedelta(seconds=45))
+    db.add(link)
+    db.commit()
+
     return {
         "match_id": match.id,
         "player_id": new_player.id,
-        "player_name": new_player.name
+        "player_name": new_player.name,
     }
-
 
 @router.post("/{match_id}/submit", response_model=WordSubmissionResponse)
 def submit_word(
@@ -78,6 +93,20 @@ def submit_word(
     player = db.get(Player, player_id)
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
+    
+    link = (
+        db.query(MatchPlayer)
+        .filter(
+            MatchPlayer.match_id == match_id,
+            MatchPlayer.player_id == player_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=400, detail="Player has not joined this match")
+
+    if datetime.utcnow() > link.expires_at:
+        raise HTTPException(status_code=400, detail="Time is up for this player")
 
     word = payload.word.strip().lower()
     if not word:
@@ -117,6 +146,30 @@ def submit_word(
     db.refresh(submission)
 
     return submission
+
+@router.get("/{match_id}/players/{player_id}/time", response_model=PlayerTimeResponse)
+def get_player_time_left(match_id: int, player_id: int, db: Session = Depends(get_db)):
+    link = (
+        db.query(MatchPlayer)
+        .filter(
+            MatchPlayer.match_id == match_id,
+            MatchPlayer.player_id == player_id,
+        )
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Player has not joined this match")
+
+    now = datetime.utcnow()
+    seconds_left = int((link.expires_at - now).total_seconds())
+    if seconds_left < 0:
+        seconds_left = 0
+
+    return {
+        "match_id": match_id,
+        "player_id": player_id,
+        "seconds_left": seconds_left,
+    }
 
 @router.get("/{match_id}", response_model=MatchDetailResponse)
 def get_match(match_id: int, db: Session = Depends(get_db)):
@@ -163,7 +216,6 @@ def get_leaderboard(match_id: int, db: Session = Depends(get_db)):
 
     return {"match_id": match_id, "leaderboard": leaderboard}
 
-# Endpoint to end a match
 @router.post("/{match_id}/end", response_model=MatchEndResponse)
 def end_match(match_id: int, db: Session = Depends(get_db)):
     match = db.get(Match, match_id)
@@ -175,4 +227,3 @@ def end_match(match_id: int, db: Session = Depends(get_db)):
     db.refresh(match)
 
     return match
-   

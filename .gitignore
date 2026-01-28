@@ -6,6 +6,15 @@ venv.bak/
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
 game.db
 .env
+ENV/
 .DS_Store
+*.db
+Thumbs.db
+.pytest_cache/
+.coverage
+htmlcov/
+.vscode/
+.idea/
